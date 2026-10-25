@@ -19,7 +19,8 @@ pipeline {
                         chmod 600 "$SSH_KEY"
                         ansible-playbook -i inventory.ini playbook.yaml \
                             --private-key "$SSH_KEY" \
-                            --syntax-check
+                            ansible-playbook -i inventory.ini playbook.yaml \
+    --private-key "$SSH_KEY"
                     '''
                 }
             }
