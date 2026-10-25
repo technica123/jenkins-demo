@@ -9,15 +9,19 @@ pipeline {
             }
         }
 
-        stage('Check Ansible') {
-            steps {
-                sh 'ansible --version'
-            }
-        }
-
         stage('Run Ansible Playbook') {
             steps {
-                sh 'ansible-playbook -i inventory.ini playbook.yaml --syntax-check'
+                withCredentials([sshUserPrivateKey(
+                    credentialsId: 'ec2-ssh-key',
+                    keyFileVariable: 'SSH_KEY'
+                )]) {
+                    sh '''
+                        chmod 600 "$SSH_KEY"
+                        ansible-playbook -i inventory.ini playbook.yaml \
+                            --private-key "$SSH_KEY" \
+                            --syntax-check
+                    '''
+                }
             }
         }
     }
