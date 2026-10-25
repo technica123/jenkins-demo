@@ -16,12 +16,10 @@ pipeline {
                     keyFileVariable: 'SSH_KEY'
                 )]) {
                     sh '''
-                        chmod 600 "$SSH_KEY"
-                        ansible-playbook -i inventory.ini playbook.yaml \
-                            --private-key "$SSH_KEY" \
-                            ansible-playbook -i inventory.ini playbook.yaml \
-    --private-key "$SSH_KEY"
-                    '''
+    chmod 600 "$SSH_KEY"
+    ansible-playbook -i inventory.ini playbook.yaml \
+        --private-key "$SSH_KEY" -u ubuntu
+'''
                 }
             }
         }
