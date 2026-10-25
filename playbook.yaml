@@ -1,0 +1,106 @@
+
+---
+- name: Install VictoriaMetrics and Grafana
+  hosts: monitoring
+  become: yes
+
+  tasks:
+    - name: Update packages
+      apt:
+        update_cache: yes
+
+    - name: Install required tools
+      apt:
+        name:
+          - wget
+          - apt-transport-https
+          - software-properties-common
+        state: present
+
+    - name: Download VictoriaMetrics
+      get_url:
+        url: https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.154.1/victoria-metrics-linux-amd64-v1.154.1.tar.gz
+        dest: /tmp/victoriametrics.tar.gz
+
+    - name: Extract VictoriaMetrics
+      unarchive:
+        src: /tmp/victoriametrics.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+
+
+    - name: Create VictoriaMetrics config directory
+      file:
+        path: /etc/victoriametrics
+        state: directory
+        mode: "0755"
+
+    - name: Configure metrics collection
+      copy:
+        dest: /etc/victoriametrics/prometheus.yml
+        mode: "0644"
+        content: |
+          global:
+            scrape_interval: 15s
+          scrape_configs:
+            - job_name: monitoring-server
+              static_configs:
+                - targets: ["127.0.0.1:9100"]
+
+    - name: Create VictoriaMetrics service
+      copy:
+        dest: /etc/systemd/system/victoriametrics.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=VictoriaMetrics
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/victoria-metrics-prod -storageDataPath=/var/lib/victoria-metrics -httpListenAddr=127.0.0.1:8428 -promscrape.config=/etc/victoriametrics/prometheus.yml
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start VictoriaMetrics service
+      systemd:
+        name: victoriametrics
+        daemon_reload: yes
+        enabled: yes
+        state: restarted
+
+
+    - name: Add Grafana repository key
+      get_url:
+        url: https://apt.grafana.com/gpg-full.key
+        dest: /etc/apt/keyrings/grafana.asc
+        mode: "0644"
+
+    - name: Add Grafana repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+        filename: grafana
+        state: present
+
+    - name: Install Grafana
+      apt:
+        name: grafana
+        state: present
+        update_cache: yes
+
+    - name: Start Grafana
+      systemd:
+        name: grafana-server
+        enabled: yes
+        state: started
+    - name: Install Node Exporter
+      apt:
+        name: prometheus-node-exporter
+        state: present
+
+    - name: Start Node Exporter
+      systemd:
+        name: prometheus-node-exporter
+        enabled: yes
+        state: started
